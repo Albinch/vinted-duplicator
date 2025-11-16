@@ -132,6 +132,14 @@ function App() {
         vintedContext={vintedContext}
         onClick={handleSaveTemplate}
       />
+      <div className="footer">
+        <a 
+          href="mailto:vintedduplicator@gmail.com?subject=Vinted Duplicator - Feedback"
+          className="contact-link"
+        >
+          💬 Contact / Bug / Suggestion
+        </a>
+      </div>
     </div>
   )
 }
