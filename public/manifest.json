@@ -7,9 +7,22 @@
       "storage",
       "activeTab"
     ],
-    "host_permissions": [
+    "host_permissions": [        
       "https://www.vinted.fr/*",
-      "https://www.vinted.com/*"
+      "https://www.vinted.com/*",
+      "https://www.vinted.co.uk/*",
+      "https://www.vinted.de/*",
+      "https://www.vinted.es/*",
+      "https://www.vinted.it/*",
+      "https://www.vinted.pl/*",
+      "https://www.vinted.be/*",
+      "https://www.vinted.nl/*",
+      "https://www.vinted.at/*",
+      "https://www.vinted.cz/*",
+      "https://www.vinted.lt/*",
+      "https://www.vinted.lu/*",
+      "https://www.vinted.pt/*",
+      "https://www.vinted.se/*"
     ],
     "action": {
       "default_popup": "index.html",
@@ -20,7 +33,23 @@
     },
     "content_scripts": [
       {
-        "matches": ["https://www.vinted.fr/*", "https://www.vinted.com/*"],
+        "matches": [        
+          "https://www.vinted.fr/*",
+          "https://www.vinted.com/*",
+          "https://www.vinted.co.uk/*",
+          "https://www.vinted.de/*",
+          "https://www.vinted.es/*",
+          "https://www.vinted.it/*",
+          "https://www.vinted.pl/*",
+          "https://www.vinted.be/*",
+          "https://www.vinted.nl/*",
+          "https://www.vinted.at/*",
+          "https://www.vinted.cz/*",
+          "https://www.vinted.lt/*",
+          "https://www.vinted.lu/*",
+          "https://www.vinted.pt/*",
+          "https://www.vinted.se/*"
+        ],
         "js": ["content.js"],
         "run_at": "document_idle"
       }

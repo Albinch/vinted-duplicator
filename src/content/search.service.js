@@ -15,7 +15,6 @@ function simulateSearch(selector, searchInputSelector, searchResultSelector, que
 
         setTimeout(() => {
             const result = document.querySelector('[id^="catalog-search-"][id$="-result"]');
-            console.log(result);
             
             if (result) {
               const title = result.querySelector('.web_ui__Cell__title')?.textContent;

@@ -1,6 +1,6 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'extractTemplateData') {
-      const data = extractVintedData()
+      const data = extractVintedData();
       sendResponse({ success: true, data })
     } else if (request.action === 'fillTemplate') {
       fillVintedForm(request.data)
@@ -12,12 +12,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function extractVintedData() {  
   return {
     title: document.querySelector('div[data-testid="item-page-summary-plugin"] h1')?.textContent || "",
-    price: document.querySelector('div[data-testid="item-price"] > p')?.textContent?
-        .trim()
-        .split(/\s+/)
-        .slice(0, -1)
-        .join('')
-        .replace(';', ',')  || '',
+    // price: extractPrice() || '',
     description: document.querySelector('div[itemprop="description"]')?.textContent || '',
     brand: document.querySelector('span[itemprop="name"]')?.textContent || '',
     size: document.querySelector('div[itemprop="size"] > span')?.textContent || '',
@@ -27,6 +22,15 @@ function extractVintedData() {
   }
 }
 
+function extractPrice() {
+  const price = document.querySelector('div[data-testid="item-price"] > p')?.textContent;
+  const normalized = price
+    .replace(/[^\d,\.]/g, '')
+    .replace(',', '.');
+
+  return normalized;
+}
+
 function extractCategory() {
   const nodes = document.querySelectorAll('#content > section > div.web_ui__Cell__cell.web_ui__Cell__tight.web_ui__Cell__transparent > div.web_ui__Cell__content > div > div > ul > li');
   const lastNode = nodes[nodes.length - 1];
@@ -34,10 +38,8 @@ function extractCategory() {
 }
   
 function fillVintedForm(data) {
-  console.log(data);
   const fields = {
     '[name="title"]': data.title,
-    'input[name="price"]': parseFloat(data.price.replace(',', '.')),
     'textarea[name="description"]': data.description
   }
 
@@ -55,7 +57,6 @@ function fillVintedForm(data) {
 }
 
 function fillCategory(data) {
-  console.log(data);
   // search category
   simulateSearch(
     'input[name="category"]',
@@ -129,8 +130,6 @@ function selectSize(size) {
         return;
       }
     });
-
-    console.log('size not found')
   }, 500);
 }
 
