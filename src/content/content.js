@@ -11,13 +11,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
 function extractVintedData() {  
   return {
-    title: document.querySelector('#sidebar > div.item-page-sidebar-content > div:nth-child(1) > div > div > div > div > div > div.details-list.details-list--main-info > div:nth-child(1) > div:nth-child(1) > h1')?.textContent || "caca",
-    price: document.querySelector('#sidebar > div.item-page-sidebar-content > div:nth-child(1) > div > div > div > div > div > div.details-list.details-list--main-info > div.details-list.details-list--pricing > div:nth-child(1) > div > p')?.textContent
-      ?.trim()
-      .split(/\s+/)
-      .slice(0, -1)
-      .join('')
-      .replace(';', ',')  || '',
+    title: document.querySelector('div[data-testid="item-page-summary-plugin"] h1')?.textContent || "",
+    price: document.querySelector('div[data-testid="item-price"] > p')?.textContent?
+        .trim()
+        .split(/\s+/)
+        .slice(0, -1)
+        .join('')
+        .replace(';', ',')  || '',
     description: document.querySelector('div[itemprop="description"]')?.textContent || '',
     brand: document.querySelector('span[itemprop="name"]')?.textContent || '',
     size: document.querySelector('div[itemprop="size"] > span')?.textContent || '',
