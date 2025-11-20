@@ -9,26 +9,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true
 })
   
-function extractVintedData() {  
+function extractVintedData() {
   return {
     title: document.querySelector('div[data-testid="item-page-summary-plugin"] h1')?.textContent || "",
-    // price: extractPrice() || '',
-    description: document.querySelector('div[itemprop="description"]')?.textContent || '',
+    description: document.querySelector('div[itemprop="description"]')?.firstChild?.textContent || '',
     brand: document.querySelector('span[itemprop="name"]')?.textContent || '',
     size: document.querySelector('div[itemprop="size"] > span')?.textContent || '',
     category: extractCategory() || '',
-    condition: document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(5)')?.textContent,
+    condition: extractCondition(),
     colors: document.querySelector('div[itemprop="color"]')?.textContent
   }
 }
 
-function extractPrice() {
-  const price = document.querySelector('div[data-testid="item-price"] > p')?.textContent;
-  const normalized = price
-    .replace(/[^\d,\.]/g, '')
-    .replace(',', '.');
-
-  return normalized;
+function extractCondition() {
+  return document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(1)')?.textContent
+    || document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(3)')?.textContent
+    || document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(5)')?.textContent
 }
 
 function extractCategory() {
@@ -82,6 +78,9 @@ function fillCategory(data) {
 
 function simulateSearch(selector, searchInputSelector, searchResultSelector, query) {
   const input = document.querySelector(selector);
+  if (!input) {
+    return;
+  }
   input.click();
 
   setTimeout(() => {
@@ -116,7 +115,11 @@ function selectSize(size) {
   const sizeElement = document
     .querySelector('input[name="size"]'); 
 
-  sizeElement.click();
+  if (sizeElement) {
+    sizeElement.click();
+  } else {
+    return;
+  }
 
   setTimeout(() => {
     const liElements = sizeElement
@@ -135,9 +138,15 @@ function selectSize(size) {
 
 function selectCondition(condition) {
   const conditionElement = document
-  .querySelector('input[name="condition"]'); 
+  .querySelector('input[name="condition"]');
 
-  conditionElement.click();
+  if (conditionElement) {
+    conditionElement.click();
+  } else {
+    return;
+  }
+
+  console.log("Condition element found");
 
   setTimeout(() => {
     const liElements = conditionElement
@@ -146,6 +155,7 @@ function selectCondition(condition) {
 
     liElements.forEach(li => {
       const titleElement = li.querySelector('.web_ui__Cell__title');
+      console.log(titleElement, condition);
       if (titleElement && titleElement.textContent.trim() === condition) {
         li.firstChild.click();
         return;
@@ -155,12 +165,19 @@ function selectCondition(condition) {
 }
 
 function selectColors(colors) {
-  colorsArray = colors.replace(/\s+/g, "").split(",");
+  if (!colors) {
+    return;
+  }
+  const colorsArray = colors.replace(/\s+/g, "").split(",");
 
   const colorsElement = document
     .querySelector('input[name="color"]'); 
 
-  colorsElement.click();
+  if (colorsElement) {
+    colorsElement.click();
+  } else {
+    return;
+  }
 
   setTimeout(() => {
     const vintedColorsElement = colorsElement
