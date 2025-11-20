@@ -30,7 +30,12 @@ function extractCondition() {
 function extractCategory() {
   const nodes = document.querySelectorAll('#content > section > div.web_ui__Cell__cell.web_ui__Cell__tight.web_ui__Cell__transparent > div.web_ui__Cell__content > div > div > ul > li');
   const lastNode = nodes[nodes.length - 1];
-  return lastNode.querySelector('span[itemprop="title"]').textContent?.split(" ").slice(1).join(" ");
+  const categoryTitle = lastNode.querySelector('span[itemprop="title"]').textContent;
+  if (categoryTitle?.split(" ").length === 1) {
+    return categoryTitle
+  } else {
+    return categoryTitle.split(" ").slice(1).join(" ");
+  }
 }
   
 function fillVintedForm(data) {
@@ -146,8 +151,6 @@ function selectCondition(condition) {
     return;
   }
 
-  console.log("Condition element found");
-
   setTimeout(() => {
     const liElements = conditionElement
       .nextElementSibling
@@ -155,7 +158,6 @@ function selectCondition(condition) {
 
     liElements.forEach(li => {
       const titleElement = li.querySelector('.web_ui__Cell__title');
-      console.log(titleElement, condition);
       if (titleElement && titleElement.textContent.trim() === condition) {
         li.firstChild.click();
         return;
