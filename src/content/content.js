@@ -16,15 +16,9 @@ function extractVintedData() {
     brand: document.querySelector('span[itemprop="name"]')?.textContent || '',
     size: document.querySelector('div[itemprop="size"] > span')?.textContent || '',
     category: extractCategory() || '',
-    condition: extractCondition(),
+    condition: document.querySelector('div[itemprop="status"] > span')?.textContent || '',
     colors: document.querySelector('div[itemprop="color"]')?.textContent
   }
-}
-
-function extractCondition() {
-  return document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(1)')?.textContent
-    || document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(3)')?.textContent
-    || document.querySelector('[data-testid="item-page-summary-plugin"] > div:nth-child(2) > span:nth-child(5)')?.textContent
 }
 
 function extractCategory() {
