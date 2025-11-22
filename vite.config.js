@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, 'index.html'),
         content: resolve(__dirname, 'src/content/content.js'),
+        contentRelist: resolve(__dirname, 'src/content/content-relist.js'),
         background: resolve(__dirname, 'src/background/background.js'),
       },
       output: {
