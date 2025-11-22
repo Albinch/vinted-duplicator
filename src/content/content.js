@@ -177,8 +177,8 @@ function selectColors(colors) {
 
   setTimeout(() => {
     const vintedColorsElement = colorsElement
-      .nextElementSibling
-      .querySelectorAll('div.web_ui__Cell__title > div > p');
+        .nextElementSibling
+        .querySelectorAll('div.web_ui__Cell__title');
 
     vintedColorsElement.forEach(colorElement => {
       if (colorElement && colorsArray.includes(colorElement.textContent.trim())) {
