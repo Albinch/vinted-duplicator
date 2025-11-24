@@ -6,20 +6,13 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
+      // Only build the popup HTML, not the content scripts
+      // Content scripts are built separately with esbuild (see scripts/build.js)
       input: {
         popup: resolve(__dirname, 'index.html'),
-        content: resolve(__dirname, 'src/content/content.js'),
-        contentRelist: resolve(__dirname, 'src/content/content-relist.js'),
-        background: resolve(__dirname, 'src/background/background.js'),
-      },
-      output: {
-        entryFileNames: (chunkInfo) => {
-          return chunkInfo.name === 'popup' 
-            ? 'assets/[name].js'
-            : '[name].js'
-        },
       },
     },
     outDir: 'dist',
+    cssCodeSplit: false,
   },
 })

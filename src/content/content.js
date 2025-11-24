@@ -1,191 +1,85 @@
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'extractTemplateData') {
-      const data = extractVintedData();
-      sendResponse({ success: true, data })
-    } else if (request.action === 'fillTemplate') {
-      fillVintedForm(request.data)
-      sendResponse({ success: true })
+/**
+ * Content script for Vinted item and create pages
+ * Handles template extraction and form filling
+ */
+
+import { createMessageListener } from '../utils/messaging.js';
+import { extractVintedItemData, validateExtractedData } from '../utils/vinted-extractor.js';
+import { fillVintedForm } from '../utils/vinted-form-filler.js';
+
+/**
+ * Handle extractTemplateData action
+ * Extracts data from current Vinted item page
+ */
+async function handleExtractTemplateData() {
+  try {
+    console.log('[Vinted Duplicator] Extracting template data...');
+
+    const data = extractVintedItemData();
+
+    if (!validateExtractedData(data)) {
+      throw new Error('Extracted data is invalid or incomplete');
     }
-    return true
-})
-  
-function extractVintedData() {
-  return {
-    title: document.querySelector('div[data-testid="item-page-summary-plugin"] h1')?.textContent || "",
-    description: document.querySelector('div[itemprop="description"]')?.firstChild?.textContent || '',
-    brand: document.querySelector('span[itemprop="name"]')?.textContent || '',
-    size: document.querySelector('div[itemprop="size"] > span')?.textContent || '',
-    category: extractCategory() || '',
-    condition: document.querySelector('div[itemprop="status"] > span')?.textContent || '',
-    colors: document.querySelector('div[itemprop="color"]')?.textContent
+
+    console.log('[Vinted Duplicator] Data extracted successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Extraction error:', error);
+    throw new Error(`Failed to extract template data: ${error.message}`);
   }
 }
 
-function extractCategory() {
-  const nodes = document.querySelectorAll('#content > section > div.web_ui__Cell__cell.web_ui__Cell__tight.web_ui__Cell__transparent > div.web_ui__Cell__content > div > div > ul > li');
-  const lastNode = nodes[nodes.length - 1];
-  const categoryTitle = lastNode.querySelector('span[itemprop="title"]').textContent;
-  if (categoryTitle?.split(" ").length === 1) {
-    return categoryTitle
-  } else {
-    return categoryTitle.split(" ").slice(1).join(" ");
-  }
-}
-  
-function fillVintedForm(data) {
-  const fields = {
-    '[name="title"]': data.title,
-    'textarea[name="description"]': data.description
-  }
+/**
+ * Handle fillTemplate action
+ * Fills Vinted create form with template data
+ */
+async function handleFillTemplate(request) {
+  try {
+    console.log('[Vinted Duplicator] Filling form with template...');
 
-  Object.entries(fields).forEach(([selector, value]) => {
-    const input = document.querySelector(selector)
-
-    if (input && value) {
-      input.value = value
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-      input.dispatchEvent(new Event('change', { bubbles: true }))
+    if (!request.data) {
+      throw new Error('No template data provided');
     }
-  })
 
-  fillCategory(data);
+    const results = await fillVintedForm(request.data);
+
+    if (!results.success) {
+      throw new Error('Form filling failed');
+    }
+
+    if (results.errors.length > 0) {
+      console.warn('[Vinted Duplicator] Form filled with some errors:', results.errors);
+      return {
+        ...results,
+        message: 'Template applied with some fields skipped'
+      };
+    }
+
+    console.log('[Vinted Duplicator] Form filled successfully');
+    return {
+      ...results,
+      message: 'Template applied successfully'
+    };
+  } catch (error) {
+    console.error('[Vinted Duplicator] Fill error:', error);
+    throw new Error(`Failed to fill template: ${error.message}`);
+  }
 }
 
-function fillCategory(data) {
-  // search category
-  simulateSearch(
-    'input[name="category"]',
-    'input#catalog-search-input',
-    '[id^="catalog-search-"][id$="-result"]',
-    data.category
+/**
+ * Initialize content script
+ */
+function init() {
+  console.log('[Vinted Duplicator] Content script loaded');
+
+  // Set up message listener with handlers
+  chrome.runtime.onMessage.addListener(
+    createMessageListener({
+      extractTemplateData: handleExtractTemplateData,
+      fillTemplate: handleFillTemplate
+    })
   );
-
-  setTimeout(() => {
-    // search brand
-    simulateSearch(
-      'input[name="brand"]',
-      'input[name="brand"]',
-      '[id^="brand-"]',
-      data.brand
-    );
-
-    selectSize(data.size);
-    selectCondition(data.condition);
-    selectColors(data.colors);
-  }, 3000);
 }
 
-function simulateSearch(selector, searchInputSelector, searchResultSelector, query) {
-  const input = document.querySelector(selector);
-  if (!input) {
-    return;
-  }
-  input.click();
-
-  setTimeout(() => {
-      const searchInput = document.querySelector(searchInputSelector);
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-      setter.call(searchInput, query);
-
-      searchInput.dispatchEvent(new InputEvent('input', { 
-          bubbles: true,
-          data: query,
-          inputType: 'insertText'
-      }));
-
-      setTimeout(() => {
-          const result = document.querySelector(searchResultSelector);
-        
-          
-          if (result) {
-            const title = result.querySelector('.web_ui__Cell__title')?.textContent;
-            console.log('✅ Catégorie trouvée:', title);
-            result.click();
-            
-            console.log('✅ Catégorie sélectionnée avec succès');
-          } else {
-            console.error('❌ Aucun résultat trouvé pour:', query);
-          }
-        }, 1500);
-  }, 300);
-}
-
-function selectSize(size) {
-  const sizeElement = document
-    .querySelector('input[name="size"]'); 
-
-  if (sizeElement) {
-    sizeElement.click();
-  } else {
-    return;
-  }
-
-  setTimeout(() => {
-    const liElements = sizeElement
-      .nextElementSibling
-      .querySelectorAll('ul > li');
-
-    liElements.forEach(li => {
-      const titleElement = li.querySelector('.web_ui__Cell__title');
-      if (titleElement && titleElement.textContent.trim() === size) {
-        li.firstChild.click();
-        return;
-      }
-    });
-  }, 500);
-}
-
-function selectCondition(condition) {
-  const conditionElement = document
-  .querySelector('input[name="condition"]');
-
-  if (conditionElement) {
-    conditionElement.click();
-  } else {
-    return;
-  }
-
-  setTimeout(() => {
-    const liElements = conditionElement
-      .nextElementSibling
-      .querySelectorAll('ul > li');
-
-    liElements.forEach(li => {
-      const titleElement = li.querySelector('.web_ui__Cell__title');
-      if (titleElement && titleElement.textContent.trim() === condition) {
-        li.firstChild.click();
-        return;
-      }
-    });
-  }, 500);
-}
-
-function selectColors(colors) {
-  if (!colors) {
-    return;
-  }
-  const colorsArray = colors.replace(/\s+/g, "").split(",");
-
-  const colorsElement = document
-    .querySelector('input[name="color"]'); 
-
-  if (colorsElement) {
-    colorsElement.click();
-  } else {
-    return;
-  }
-
-  setTimeout(() => {
-    const vintedColorsElement = colorsElement
-        .nextElementSibling
-        .querySelectorAll('div.web_ui__Cell__title');
-
-    vintedColorsElement.forEach(colorElement => {
-      if (colorElement && colorsArray.includes(colorElement.textContent.trim())) {
-        setTimeout(() => {
-          colorElement.click();
-        }, 100);
-      }
-    });
-  }, 500);
-}
+// Initialize when script loads
+init();

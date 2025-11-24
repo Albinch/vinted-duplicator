@@ -1,5 +1,5 @@
 function TemplateItem({ template, index, isClickable, onUse, onDelete }) {
-    const formattedDate = new Date(template.createdAt).toLocaleDateString('fr-FR')
+    const formattedDate = new Date(template.createdAt).toLocaleDateString('en-US')
   
     return (
       <div 
