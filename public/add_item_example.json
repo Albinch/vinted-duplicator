@@ -1,0 +1,45 @@
+{
+    "item": {
+      "id": null,
+      "currency": "EUR",
+      "temp_uuid": "fce256f5-8c94-4522-8621-75f8917f1eea",
+      "title": "T-Shirt manches longues",
+      "description": "T-Shirt manches longues en très bon état",
+      "brand_id": 1259769,
+      "brand": "Another Reason",
+      "size_id": 210,
+      "catalog_id": 1810,
+      "isbn": null,
+      "author": null,
+      "book_title": null,
+      "model": null,
+      "video_game_rating_id": null,
+      "is_unisex": false,
+      "status_id": 2,
+      "price": 7,
+      "package_size_id": 1,
+      "shipment_prices": {
+        "domestic": null,
+        "international": null
+      },
+      "color_ids": [
+        27
+      ],
+      "assigned_photos": [
+        {
+          "id": 20039774655,
+          "orientation": 0
+        }
+      ],
+      "item_attributes": [],
+      "manufacturer": null,
+      "manufacturer_labelling": null,
+      "measurement_length": null,
+      "measurement_width": null,
+      "measurement_unit": null
+    },
+    "feedback_id": null,
+    "push_up": false,
+    "parcel": null,
+    "upload_session_id": "fce256f5-8c94-4522-8621-75f8917f1eea"
+  }

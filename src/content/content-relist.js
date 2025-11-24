@@ -4,14 +4,13 @@
  */
 
 import { queryAll } from '../utils/dom.js';
-import { addTemplate } from '../utils/storage.js';
 
 /**
  * Vinted API configuration
  */
 const VINTED_API = {
-  baseUrl: 'https://www.vinted.fr/api/v2',
-  itemUpload: (itemId) => `${VINTED_API.baseUrl}/item_upload/items/${itemId}`
+  itemUpload: (itemId) => `https://www.vinted.fr/api/v2/item_upload/items/${itemId}`,
+  createItem: `https://www.vinted.fr/api/v2/item_upload/items`
 };
 
 /**
@@ -22,6 +21,18 @@ const BUTTON_CONFIG = {
   style: 'margin-top: 10px;',
   label: 'Relist'
 };
+
+/**
+ * Generate a UUID v4
+ * @returns {string}
+ */
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 /**
  * Extract product ID from footer element's data-testid
@@ -99,45 +110,146 @@ async function fetchProductData(productId) {
 }
 
 /**
- * Transform Vinted API item data to template format
+ * Transform Vinted API item data to add_item payload format
  * @param {Object} apiData - Data from Vinted API
- * @returns {Object} Template data
+ * @returns {Object} Payload for creating item
  */
-function transformApiDataToTemplate(apiData) {
+function transformToAddItemPayload(apiData) {
   const item = apiData.item || apiData;
+  const uuid = generateUUID();
 
-  return {
-    title: item.title || '',
-    description: item.description || '',
-    brand: item.brand?.title || '',
-    size: item.size?.title || '',
-    category: item.catalog?.title || '',
-    condition: item.status?.title || '',
-    colors: item.colors?.map(c => c.title).join(', ') || ''
+  // Extract color IDs
+  const colorIds = [item.color1_id];
+
+  // Extract photo IDs from photos array
+  const assignedPhotos = item.photos?.map(photo => ({
+    id: photo.id,
+    orientation: photo.orientation || 0
+  })) || [];
+
+  // Extract price amount (price is an object with 'amount' field)
+  const priceAmount = typeof item.price === 'object' ? item.price?.amount : (item.price || item.price_numeric || 10);
+
+  // Build the payload matching the add_item API structure
+  const payload = {
+    item: {
+      id: null,
+      currency: item.currency || 'EUR',
+      temp_uuid: uuid,
+      title: item.title || '',
+      description: item.description || '',
+      brand_id: item.brand_id || item.brand?.id || null,
+      brand: item.brand?.title || '',
+      size_id: item.size_id || item.size?.id || null,
+      catalog_id: item.catalog_id || item.catalog?.id || null,
+      isbn: null,
+      author: null,
+      book_title: null,
+      model: null,
+      video_game_rating_id: null,
+      is_unisex: item.is_unisex || false,
+      status_id: item.status_id || item.status?.id || 2, // Default to "Good condition"
+      price: priceAmount,
+      package_size_id: item.package_size_id || 1, // Default to small package
+      shipment_prices: {
+        domestic: null,
+        international: null
+      },
+      color_ids: colorIds,
+      assigned_photos: assignedPhotos,
+      item_attributes: item.item_attributes || [],
+      manufacturer: null,
+      manufacturer_labelling: null,
+      measurement_length: null,
+      measurement_width: null,
+      measurement_unit: null
+    },
+    feedback_id: null,
+    push_up: false,
+    parcel: null,
+    upload_session_id: uuid
   };
+
+  console.log('[Vinted Duplicator] Transformed payload:', {
+    photoCount: assignedPhotos.length,
+    price: priceAmount,
+    currency: item.currency
+  });
+
+  return payload;
 }
 
 /**
- * Save product as template and open create listing page
+ * Create a new listing via Vinted API
+ * @param {Object} payload - Add item payload
+ * @returns {Promise<Object>}
+ */
+async function createListing(payload) {
+  console.log('[Vinted Duplicator] Creating listing with payload:', payload);
+
+  try {
+    // Build headers
+    const headers = {
+      'Accept': 'text/plain, */*, application/json',
+      'Content-Type': 'application/json',
+    };
+
+    headers['x-csrf-token'] = '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e';
+    headers['x-anon-id'] = '187c28ac-9c79-461d-b780-49b994c57d25'
+    headers['x-enable-multiple-size-groups'] = 'true';
+    headers['x-upload-form'] = 'true';
+
+    const response = await fetch(VINTED_API.createItem, {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error('[Vinted Duplicator] API Error:', errorData);
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[Vinted Duplicator] Listing created:', data);
+
+    return data;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Error creating listing:', error);
+    throw new Error(`Failed to create listing: ${error.message}`);
+  }
+}
+
+/**
+ * Relist a product by creating it via API and opening edit page for photos
  * @param {string} productId
  * @returns {Promise<void>}
  */
-async function saveAndOpenCreatePage(productId) {
+async function relistProduct(productId) {
   // Fetch product data
   const productData = await fetchProductData(productId);
 
-  // Transform to template format
-  const templateData = transformApiDataToTemplate(productData);
+  // Transform to add_item payload
+  const payload = transformToAddItemPayload(productData);
 
-  // Save as template
-  const template = await addTemplate(templateData);
-  console.log('[Vinted Duplicator] Template saved:', template);
+  // Create the listing
+  const result = await createListing(payload);
 
-  // Open create listing page in new tab
-  const createUrl = `${window.location.origin}/items/new`;
-  window.open(createUrl, '_blank');
+  // Open the newly created item's edit page to add photos
+  // The API returns the created item with its ID
+  if (result.item && result.item.id) {
+    const editUrl = `${window.location.origin}/items/${result.item.id}/edit`;
+    window.open(editUrl, '_blank');
+    console.log('[Vinted Duplicator] Opened edit page for photos:', editUrl);
+  } else {
+    // Fallback: open general items page
+    const itemsUrl = `${window.location.origin}/member/general/items`;
+    window.open(itemsUrl, '_blank');
+  }
 
-  return template;
+  return result;
 }
 
 /**
@@ -175,13 +287,13 @@ async function handleRelistClick(e, productId) {
 
   // Set loading state
   button.disabled = true;
-  updateButtonState(button, 'loading', 'Saving...');
+  updateButtonState(button, 'loading', 'Creating...');
 
   try {
-    await saveAndOpenCreatePage(productId);
+    await relistProduct(productId);
 
     // Success feedback
-    updateButtonState(button, 'success', 'Saved!');
+    updateButtonState(button, 'success', 'Created!');
 
     // Reset after 2 seconds
     setTimeout(() => {
