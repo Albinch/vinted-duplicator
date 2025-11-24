@@ -10,7 +10,9 @@ import { queryAll } from '../utils/dom.js';
  */
 const VINTED_API = {
   itemUpload: (itemId) => `https://www.vinted.fr/api/v2/item_upload/items/${itemId}`,
-  createItem: `https://www.vinted.fr/api/v2/item_upload/items`
+  createItem: `https://www.vinted.fr/api/v2/item_upload/items`,
+  uploadPhoto: `https://www.vinted.fr/api/v2/photos`,
+  deleteItem: (itemId) => `https://www.vinted.fr/api/v2/items/${itemId}/delete`
 };
 
 /**
@@ -110,22 +112,138 @@ async function fetchProductData(productId) {
 }
 
 /**
+ * Download a photo from URL as Blob (via background script to bypass CORS)
+ * @param {string} url - Photo URL
+ * @returns {Promise<Blob>}
+ */
+async function downloadPhoto(url) {
+  try {
+    console.log(`[Vinted Duplicator] Requesting photo download from background: ${url}`);
+
+    // Send message to background script to download the photo
+    const response = await chrome.runtime.sendMessage({
+      action: 'downloadPhoto',
+      url: url
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to download photo');
+    }
+
+    // Convert the array buffer back to a Blob
+    const uint8Array = new Uint8Array(response.data.arrayBuffer);
+    const blob = new Blob([uint8Array], { type: response.data.contentType });
+
+    console.log(`[Vinted Duplicator] Downloaded photo: ${blob.size} bytes`);
+    return blob;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Error downloading photo:', error);
+    throw error;
+  }
+}
+
+/**
+ * Upload a photo to Vinted
+ * @param {Blob} photoBlob - Photo binary data
+ * @param {string} tempUuid - Temporary UUID for the upload session
+ * @returns {Promise<number>} Uploaded photo ID
+ */
+async function uploadPhoto(photoBlob, tempUuid) {
+  try {
+    const formData = new FormData();
+    formData.append('photo[type]', 'item');
+    formData.append('photo[file]', photoBlob, 'photo.jpg');
+    formData.append('photo[temp_uuid]', tempUuid);
+
+    console.log(`[Vinted Duplicator] Uploading photo (${photoBlob.size} bytes)...`);
+
+    const response = await fetch(VINTED_API.uploadPhoto, {
+      method: 'POST',
+      headers: {
+        'x-csrf-token': '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e',
+        'x-anon-id': '187c28ac-9c79-461d-b780-49b994c57d25'
+      },
+      credentials: 'include',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error('[Vinted Duplicator] Photo upload error:', errorData);
+      throw new Error(`Failed to upload photo: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[Vinted Duplicator] Photo uploaded successfully:', data);
+
+    if (!data.id) {
+      throw new Error('Invalid photo upload response');
+    }
+
+    return data.id;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Error uploading photo:', error);
+    throw error;
+  }
+}
+
+/**
+ * Upload all photos from original item
+ * @param {Array} photos - Array of photo objects from original item
+ * @param {string} tempUuid - Temporary UUID for the upload session
+ * @returns {Promise<Array>} Array of uploaded photo objects {id, orientation}
+ */
+async function uploadPhotos(photos, tempUuid) {
+  if (!photos || photos.length === 0) {
+    console.warn('[Vinted Duplicator] No photos to upload');
+    return [];
+  }
+
+  const uploadedPhotos = [];
+
+  for (let i = 0; i < photos.length; i++) {
+    const photo = photos[i];
+    console.log(`[Vinted Duplicator] Processing photo ${i + 1}/${photos.length}`);
+
+    try {
+      // Download the photo
+      const photoBlob = await downloadPhoto(photo.url);
+
+      // Upload to Vinted
+      const uploadedPhotoId = await uploadPhoto(photoBlob, tempUuid);
+
+      // Add to results
+      uploadedPhotos.push({
+        id: uploadedPhotoId,
+        orientation: photo.orientation || 0
+      });
+
+      console.log(`[Vinted Duplicator] Photo ${i + 1}/${photos.length} uploaded successfully (ID: ${uploadedPhotoId})`);
+    } catch (error) {
+      console.error(`[Vinted Duplicator] Failed to upload photo ${i + 1}:`, error);
+      // Continue with other photos even if one fails
+    }
+  }
+
+  console.log(`[Vinted Duplicator] Total photos uploaded: ${uploadedPhotos.length}/${photos.length}`);
+  return uploadedPhotos;
+}
+
+/**
  * Transform Vinted API item data to add_item payload format
  * @param {Object} apiData - Data from Vinted API
+ * @param {Array} uploadedPhotos - Array of uploaded photo objects
  * @returns {Object} Payload for creating item
  */
-function transformToAddItemPayload(apiData) {
+function transformToAddItemPayload(apiData, uploadedPhotos = []) {
   const item = apiData.item || apiData;
   const uuid = generateUUID();
 
   // Extract color IDs
   const colorIds = [item.color1_id];
 
-  // Extract photo IDs from photos array
-  const assignedPhotos = item.photos?.map(photo => ({
-    id: photo.id,
-    orientation: photo.orientation || 0
-  })) || [];
+  // Use uploaded photos (passed as parameter after upload)
+  const assignedPhotos = uploadedPhotos;
 
   // Extract price amount (price is an object with 'amount' field)
   const priceAmount = typeof item.price === 'object' ? item.price?.amount : (item.price || item.price_numeric || 10);
@@ -223,7 +341,46 @@ async function createListing(payload) {
 }
 
 /**
- * Relist a product by creating it via API and opening edit page for photos
+ * Delete an item via Vinted API
+ * @param {string} productId - ID of the item to delete
+ * @returns {Promise<Object>}
+ */
+async function deleteItem(productId) {
+  console.log(`[Vinted Duplicator] Deleting item ${productId}...`);
+
+  try {
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    headers['x-csrf-token'] = '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e';
+    headers['x-anon-id'] = '187c28ac-9c79-461d-b780-49b994c57d25';
+
+    const response = await fetch(VINTED_API.deleteItem(productId), {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error('[Vinted Duplicator] Delete API Error:', errorData);
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[Vinted Duplicator] Item deleted successfully:', data);
+
+    return data;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Error deleting item:', error);
+    throw new Error(`Failed to delete item: ${error.message}`);
+  }
+}
+
+/**
+ * Relist a product by uploading photos and creating via API
  * @param {string} productId
  * @returns {Promise<void>}
  */
@@ -231,18 +388,37 @@ async function relistProduct(productId) {
   // Fetch product data
   const productData = await fetchProductData(productId);
 
-  // Transform to add_item payload
-  const payload = transformToAddItemPayload(productData);
+  // Generate UUID for upload session
+  const uuid = generateUUID();
+
+  // Upload photos first
+  const item = productData.item || productData;
+  console.log(`[Vinted Duplicator] Uploading ${item.photos?.length || 0} photos...`);
+  const uploadedPhotos = await uploadPhotos(item.photos || [], uuid);
+
+  if (uploadedPhotos.length === 0) {
+    throw new Error('No photos could be uploaded. At least one photo is required.');
+  }
+
+  // Transform to add_item payload with uploaded photo IDs
+  const payload = transformToAddItemPayload(productData, uploadedPhotos);
+
+  // Delete the old item after successful creation
+  try {
+    await deleteItem(productId);
+    console.log('[Vinted Duplicator] Old item deleted successfully');
+  } catch (error) {
+    throw new Error('[Vinted Duplicator] Failed to delete old item');
+  }
 
   // Create the listing
   const result = await createListing(payload);
 
-  // Open the newly created item's edit page to add photos
-  // The API returns the created item with its ID
+  // Open the newly created item's page
   if (result.item && result.item.id) {
-    const editUrl = `${window.location.origin}/items/${result.item.id}/edit`;
-    window.open(editUrl, '_blank');
-    console.log('[Vinted Duplicator] Opened edit page for photos:', editUrl);
+    // const itemUrl = `${window.location.origin}/items/${result.item.id}`;
+    // window.open(itemUrl, '_blank');
+    console.log('[Vinted Duplicator] Opened new listing:', itemUrl);
   } else {
     // Fallback: open general items page
     const itemsUrl = `${window.location.origin}/member/general/items`;

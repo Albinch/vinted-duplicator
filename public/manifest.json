@@ -7,7 +7,9 @@
       "storage",
       "activeTab"
     ],
-    "host_permissions": [        
+    "host_permissions": [ 
+      "https://*.vinted.net/*",
+      "https://*.vinted.fr/*",         
       "https://www.vinted.fr/*",
       "https://www.vinted.com/*",
       "https://www.vinted.co.uk/*",
