@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Vinted Duplicator - List Faster",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "description": "Duplicate Vinted listings in 1 click",
     "permissions": [
       "storage",
