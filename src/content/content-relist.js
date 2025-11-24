@@ -414,16 +414,10 @@ async function relistProduct(productId) {
   // Create the listing
   const result = await createListing(payload);
 
-  // Open the newly created item's page
-  if (result.item && result.item.id) {
-    // const itemUrl = `${window.location.origin}/items/${result.item.id}`;
-    // window.open(itemUrl, '_blank');
-    console.log('[Vinted Duplicator] New listing created');
-  } else {
-    // Fallback: open general items page
-    const itemsUrl = `${window.location.origin}/member/general/items`;
-    window.open(itemsUrl, '_blank');
-  }
+  console.log('[Vinted Duplicator] New listing created successfully');
+
+  // Hard reload the page to refresh the wardrobe
+  window.location.reload();
 
   return result;
 }
