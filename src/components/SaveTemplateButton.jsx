@@ -1,31 +1,52 @@
+import { Save, CheckCircle2, FileText, ArrowRight } from 'lucide-react'
+import { Button } from './ui/button'
+
 function SaveTemplateButton({ isOnVinted, vintedContext, onClick }) {
-    const getButtonState = () => {
-      if (!isOnVinted) {
-        return { text: 'Go to Vinted', disabled: true }
+  const getButtonState = () => {
+    if (!isOnVinted) {
+      return {
+        text: 'Navigate to Vinted',
+        disabled: true,
+        icon: ArrowRight
       }
-      
-      if (vintedContext === 'ITEM_PAGE') {
-        return { text: '💾 Save as a template', disabled: false }
-      }
-      
-      if (vintedContext === 'CREATE_PAGE') {
-        return { text: 'Select a template', disabled: true }
-      }
-      
-      return { text: 'Select a post to save', disabled: true }
     }
-  
-    const { text, disabled } = getButtonState()
-  
-    return (
-      <button 
-        className="primary-btn"
-        onClick={onClick}
-        disabled={disabled}
-      >
-        {text}
-      </button>
-    )
+
+    if (vintedContext === 'ITEM_PAGE') {
+      return {
+        text: 'Save Template',
+        disabled: false,
+        icon: Save
+      }
+    }
+
+    if (vintedContext === 'CREATE_PAGE') {
+      return {
+        text: 'Select a template above',
+        disabled: true,
+        icon: CheckCircle2
+      }
+    }
+
+    return {
+      text: 'Open a listing to save',
+      disabled: true,
+      icon: FileText
+    }
   }
-  
-  export default SaveTemplateButton
+
+  const { text, disabled, icon: Icon } = getButtonState()
+
+  return (
+    <Button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full"
+      size="lg"
+    >
+      <Icon className="h-4 w-4" />
+      {text}
+    </Button>
+  )
+}
+
+export default SaveTemplateButton
