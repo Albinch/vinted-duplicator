@@ -418,7 +418,7 @@ async function relistProduct(productId) {
   if (result.item && result.item.id) {
     // const itemUrl = `${window.location.origin}/items/${result.item.id}`;
     // window.open(itemUrl, '_blank');
-    console.log('[Vinted Duplicator] Opened new listing:', itemUrl);
+    console.log('[Vinted Duplicator] New listing created');
   } else {
     // Fallback: open general items page
     const itemsUrl = `${window.location.origin}/member/general/items`;
