@@ -37,6 +37,66 @@ function generateUUID() {
 }
 
 /**
+ * Extract CSRF token from script tags
+ * @returns {string|null}
+ */
+function getCsrfToken() {
+  try {
+    // Find all script tags
+    const scripts = document.querySelectorAll('script');
+
+    for (const script of scripts) {
+      const content = script.textContent || script.innerHTML;
+
+      // Look for CSRF_TOKEN in the script content
+      // Format: \"CSRF_TOKEN\":\"75f6c9fa-dc8e-4e52-a000-e09dd4084b3e\"
+      let match = content.match(/\\"CSRF_TOKEN\\":\\"([a-f0-9-]+)\\"/);
+
+      // Fallback to non-escaped format
+      if (!match) {
+        match = content.match(/"CSRF_TOKEN":"([a-f0-9-]+)"/);
+      }
+
+      if (match) {
+        console.log('[Vinted Duplicator] CSRF token found:', match[1]);
+        return match[1];
+      }
+    }
+
+    console.warn('[Vinted Duplicator] CSRF token not found in scripts');
+    return null;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Error extracting CSRF token:', error);
+    return null;
+  }
+}
+
+/**
+ * Extract anon_id from cookies via background script (domain-agnostic)
+ * @returns {Promise<string|null>}
+ */
+async function getAnonId() {
+  try {
+    console.log('[Vinted Duplicator] Requesting anon_id from background script');
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'getAnonId'
+    });
+
+    if (!response.success) {
+      console.warn('[Vinted Duplicator] Failed to get anon_id:', response.error);
+      return null;
+    }
+
+    console.log('[Vinted Duplicator] Anon ID retrieved');
+    return response.data.anonId;
+  } catch (error) {
+    console.error('[Vinted Duplicator] Error getting anon ID:', error);
+    return null;
+  }
+}
+
+/**
  * Extract product ID from footer element's data-testid
  * @param {Element} footer
  * @returns {string|null}
@@ -157,12 +217,23 @@ async function uploadPhoto(photoBlob, tempUuid) {
 
     console.log(`[Vinted Duplicator] Uploading photo (${photoBlob.size} bytes)...`);
 
+    const headers = {};
+
+    // Add CSRF token if available
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers['x-csrf-token'] = csrfToken;
+    }
+
+    // Add anon ID if available
+    const anonId = getAnonId();
+    if (anonId) {
+      headers['x-anon-id'] = anonId;
+    }
+
     const response = await fetch(VINTED_API.uploadPhoto, {
       method: 'POST',
-      headers: {
-        'x-csrf-token': '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e',
-        'x-anon-id': '187c28ac-9c79-461d-b780-49b994c57d25'
-      },
+      headers: headers,
       credentials: 'include',
       body: formData
     });
@@ -310,12 +381,21 @@ async function createListing(payload) {
     const headers = {
       'Accept': 'text/plain, */*, application/json',
       'Content-Type': 'application/json',
+      'x-enable-multiple-size-groups': 'true',
+      'x-upload-form': 'true'
     };
 
-    headers['x-csrf-token'] = '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e';
-    headers['x-anon-id'] = '187c28ac-9c79-461d-b780-49b994c57d25'
-    headers['x-enable-multiple-size-groups'] = 'true';
-    headers['x-upload-form'] = 'true';
+    // Add CSRF token if available
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers['x-csrf-token'] = csrfToken;
+    }
+
+    // Add anon ID if available
+    const anonId = getAnonId();
+    if (anonId) {
+      headers['x-anon-id'] = anonId;
+    }
 
     const response = await fetch(VINTED_API.createItem, {
       method: 'POST',
@@ -354,8 +434,17 @@ async function deleteItem(productId) {
       'Content-Type': 'application/json',
     };
 
-    headers['x-csrf-token'] = '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e';
-    headers['x-anon-id'] = '187c28ac-9c79-461d-b780-49b994c57d25';
+    // Add CSRF token if available
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers['x-csrf-token'] = csrfToken;
+    }
+
+    // Add anon ID if available
+    const anonId = getAnonId();
+    if (anonId) {
+      headers['x-anon-id'] = anonId;
+    }
 
     const response = await fetch(VINTED_API.deleteItem(productId), {
       method: 'POST',
