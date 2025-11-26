@@ -4,6 +4,7 @@ import { Loader2, AlertCircle, Copy } from 'lucide-react'
 import EmptyState from './components/EmptyState'
 import TemplateList from './components/TemplateList'
 import SaveTemplateButton from './components/SaveTemplateButton'
+import CreateListingModal from './components/CreateListingModal'
 import { Button } from './components/ui/button'
 import { getTemplates, deleteTemplate as deleteTemplateFromStorage, addTemplate } from './utils/storage'
 import { getActiveTab, sendMessageToTab, getVintedContext } from './utils/messaging'
@@ -15,6 +16,8 @@ function App() {
   const [vintedContext, setVintedContext] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
 
   useEffect(() => {
     initialize()
@@ -95,6 +98,7 @@ function App() {
 
       // Save the template to storage
       await addTemplate(response.data)
+      console.log(response.data);
 
       // Reload templates to update UI
       await loadTemplates()
@@ -113,54 +117,23 @@ function App() {
   }
 
   /**
-   * Handle using a template to fill the form
+   * Handle using a template - opens modal for listing creation
    */
-  const handleUseTemplate = async (template) => {
-    const toastId = toast.loading('Applying template...')
+  const handleUseTemplate = (template) => {
+    setSelectedTemplate(template)
+    setIsModalOpen(true)
+  }
 
-    try {
-      const tab = await getActiveTab()
+  /**
+   * Handle successful listing creation
+   */
+  const handleListingCreated = (response) => {
+    console.log('Listing created:', response)
+    toast.success('Your listing is now live on Vinted!')
 
-      // Verify we're on the create page
-      if (!tab.url.includes('/items/new') && !tab.url.includes('/upload')) {
-        throw new Error('Please navigate to the Vinted "Create listing" page first')
-      }
-
-      // Send message to fill form
-      const response = await sendMessageToTab(tab.id, {
-        action: 'fillTemplate',
-        data: template.data
-      })
-
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to apply template')
-      }
-
-      // Show feedback if there were partial errors
-      if (response.data?.errors && response.data.errors.length > 0) {
-        console.warn('Template applied with some errors:', response.data.errors)
-        toast.warning('Template applied with some fields skipped', {
-          id: toastId,
-          duration: 4000,
-          description: `${response.data.filled.length} fields filled successfully`
-        })
-      } else {
-        toast.success('Template applied successfully!', {
-          id: toastId,
-          duration: 2000,
-        })
-      }
-
-      // Close popup on success
-      setTimeout(() => {
-        window.close()
-      }, 500)
-    } catch (error) {
-      console.error('Error applying template:', error)
-      toast.error(error.message, {
-        id: toastId,
-        duration: 4000,
-      })
+    // Optionally open the created listing in a new tab
+    if (response.itemUrl) {
+      chrome.tabs.create({ url: response.itemUrl })
     }
   }
 
@@ -221,6 +194,15 @@ function App() {
   return (
     <>
       <Toaster position="top-center" richColors closeButton />
+
+      {/* Create Listing Modal */}
+      <CreateListingModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        template={selectedTemplate}
+        onSuccess={handleListingCreated}
+      />
+
       <div className="container flex flex-col p-4 gap-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b">
@@ -245,7 +227,6 @@ function App() {
           ) : (
             <TemplateList
               templates={templates}
-              vintedContext={vintedContext}
               onUseTemplate={handleUseTemplate}
               onDeleteTemplate={handleDeleteTemplate}
             />

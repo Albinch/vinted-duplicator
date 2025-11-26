@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Vinted Duplicator - List Faster",
     "version": "1.1.1",
-    "description": "Duplicate Vinted listings in 1 click",
+    "description": "Create posts templates and relist your items !",
     "permissions": [
       "storage",
       "activeTab",

@@ -2,9 +2,7 @@ import { FileText } from 'lucide-react'
 import { Badge } from './ui/badge'
 import TemplateItem from './TemplateItem'
 
-function TemplateList({ templates, vintedContext, onUseTemplate, onDeleteTemplate }) {
-  const isCreatePage = vintedContext === 'CREATE_PAGE'
-
+function TemplateList({ templates, onUseTemplate, onDeleteTemplate }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -17,11 +15,9 @@ function TemplateList({ templates, vintedContext, onUseTemplate, onDeleteTemplat
             {templates.length}
           </Badge>
         </div>
-        {isCreatePage && (
-          <Badge className="bg-primary/10 text-primary border-primary/20">
-            Select one
-          </Badge>
-        )}
+        <Badge className="bg-primary/10 text-primary border-primary/20">
+          Click to use
+        </Badge>
       </div>
 
       <div className="space-y-2">
@@ -30,7 +26,7 @@ function TemplateList({ templates, vintedContext, onUseTemplate, onDeleteTemplat
             key={template.id}
             template={template}
             index={index}
-            isClickable={isCreatePage}
+            isClickable={true}
             onUse={() => onUseTemplate(template)}
             onDelete={() => onDeleteTemplate(index)}
           />

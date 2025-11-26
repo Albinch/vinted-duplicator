@@ -10,8 +10,11 @@ function EmptyState() {
         </div>
 
         <h3 className="text-lg font-semibold mb-2">No templates yet</h3>
-        <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+        <p className="text-sm text-muted-foreground mb-2 max-w-sm">
           Create your first template to quickly duplicate Vinted listings
+        </p>
+        <p className="text-xs text-amber-600 mb-6 max-w-sm">
+          Note: You can only save templates from items in your own wardrobe
         </p>
 
         <div className="w-full max-w-xs space-y-3 text-left">
@@ -23,7 +26,7 @@ function EmptyState() {
             </div>
             <div className="flex-1">
               <p className="text-sm text-muted-foreground">
-                Go to an existing Vinted listing
+                Go to one of your items in your wardrobe
               </p>
             </div>
           </div>
