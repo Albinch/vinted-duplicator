@@ -193,11 +193,13 @@ export function buildCreateItemPayload(formData, uploadedPhotos) {
       brand: formData.brand || '',
       size_id: formData.size_id || null,
       catalog_id: formData.catalog_id || null,
-      isbn: null,
-      author: null,
-      book_title: null,
+      // Book-specific fields
+      isbn: formData.isbn || null,
+      author: formData.author || null,
+      book_title: formData.book_title || null,
       model: null,
-      video_game_rating_id: null,
+      // Video game-specific fields
+      video_game_rating_id: formData.video_game_rating_id || null,
       is_unisex: formData.is_unisex || false,
       status_id: formData.status_id || 2,
       price: parseFloat(formData.price) || 10,

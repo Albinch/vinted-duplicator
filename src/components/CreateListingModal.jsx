@@ -14,8 +14,6 @@ import { toast } from 'sonner'
  * Modal for creating a Vinted listing from a template
  */
 function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
-  console.log(template);
-
   const [formData, setFormData] = useState({
     title: template?.data?.title || '',
     description: template?.data?.description || '',
@@ -34,6 +32,13 @@ function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
     currency: template?.data?.currency || 'EUR',
     is_unisex: template?.data?.is_unisex || false,
     item_attributes: template?.data?.item_attributes || [],
+    // Book-specific fields
+    isbn: template?.data?.isbn || null,
+    author: template?.data?.author || null,
+    book_title: template?.data?.book_title || null,
+    // Video game-specific fields
+    video_game_rating: template?.data?.video_game_rating || '',
+    video_game_rating_id: template?.data?.video_game_rating_id || null,
   })
 
   const [photos, setPhotos] = useState([])
@@ -64,6 +69,13 @@ function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
         currency: template.data.currency || 'EUR',
         is_unisex: template.data.is_unisex || false,
         item_attributes: template.data.item_attributes || [],
+        // Book-specific fields
+        isbn: template.data.isbn || null,
+        author: template.data.author || null,
+        book_title: template.data.book_title || null,
+        // Video game-specific fields
+        video_game_rating: template.data.video_game_rating || '',
+        video_game_rating_id: template.data.video_game_rating_id || null,
       })
       // Reset photos when template changes
       setPhotos([])
@@ -198,6 +210,34 @@ function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
   }
 
   /**
+   * Detect item type based on available fields
+   */
+  const getItemType = () => {
+    if (formData.isbn || formData.author || formData.book_title) {
+      return 'book'
+    }
+    if (formData.video_game_rating_id || formData.video_game_rating) {
+      return 'video_game'
+    }
+    return 'regular'
+  }
+
+  const itemType = getItemType()
+
+  /**
+   * Clean category name for regular items (remove brand prefix if multi-word)
+   */
+  const getDisplayCategory = () => {
+    if (itemType !== 'regular' || !formData.category) {
+      return formData.category
+    }
+
+    const words = formData.category.trim().split(' ')
+    // If multi-word, remove first word (which is often the brand)
+    return words.length === 1 ? formData.category : words.slice(1).join(' ')
+  }
+
+  /**
    * Handle input changes
    */
   const handleChange = (field, value) => {
@@ -224,8 +264,18 @@ function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
             {/* Info message */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
-                <strong>Template from your wardrobe:</strong> All fields (category, brand, size, condition, colors) are pre-filled.
-                Only photos are required - everything else is ready to go!
+                <strong>Template from your wardrobe:</strong> All fields are pre-filled from your item.
+                {itemType === 'book' && ' Book information (ISBN, author, title) is included.'}
+                {itemType === 'video_game' && ' Video game information (rating) is included.'}
+                {itemType === 'regular' && ' Item details (brand, size, colors) are included.'}
+                {' '}Only photos are required!
+              </p>
+            </div>
+
+            {/* Coming soon banner */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>⏳ Coming soon:</strong> Ability to modify brand, size, category, condition and colors before creating the listing.
               </p>
             </div>
 
@@ -325,52 +375,27 @@ function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
               />
             </div>
 
-            {/* Brand */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Brand
-              </label>
-              <input
-                type="text"
-                value={formData.brand}
-                onChange={(e) => handleChange('brand', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="Brand name"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            {/* Size */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Size
-              </label>
-              <input
-                type="text"
-                value={formData.size}
-                onChange={(e) => handleChange('size', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="Size"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            {/* Category */}
+            {/* Category - shown for all types */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Category
               </label>
               <input
                 type="text"
-                value={formData.category}
-                onChange={(e) => handleChange('category', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={getDisplayCategory()}
+                className="w-full px-3 py-2 border rounded-lg bg-gray-50 cursor-not-allowed"
                 placeholder="Category"
-                disabled={isSubmitting}
+                disabled
+                readOnly
               />
+              {itemType === 'regular' && formData.category?.includes(' ') && (
+                <p className="text-xs text-gray-500 mt-1">
+                  (Brand prefix removed from display)
+                </p>
+              )}
             </div>
 
-            {/* Condition */}
+            {/* Condition - shown for all types */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Condition
@@ -378,27 +403,132 @@ function CreateListingModal({ open, onOpenChange, template, onSuccess }) {
               <input
                 type="text"
                 value={formData.condition}
-                onChange={(e) => handleChange('condition', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-3 py-2 border rounded-lg bg-gray-50 cursor-not-allowed"
                 placeholder="Condition"
-                disabled={isSubmitting}
+                disabled
+                readOnly
               />
             </div>
 
-            {/* Colors */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Colors
-              </label>
-              <input
-                type="text"
-                value={formData.colors}
-                onChange={(e) => handleChange('colors', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="Colors"
-                disabled={isSubmitting}
-              />
-            </div>
+            {/* Regular item fields (clothes, accessories, etc.) */}
+            {itemType === 'regular' && (
+              <>
+                {/* Brand */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Brand
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.brand}
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-50 cursor-not-allowed"
+                    placeholder="Brand name"
+                    disabled
+                    readOnly
+                  />
+                </div>
+
+                {/* Size */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Size
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.size}
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-50 cursor-not-allowed"
+                    placeholder="Size"
+                    disabled
+                    readOnly
+                  />
+                </div>
+
+                {/* Colors */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Colors
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.colors}
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-50 cursor-not-allowed"
+                    placeholder="Colors"
+                    disabled
+                    readOnly
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Book-specific fields */}
+            {itemType === 'book' && (
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="text-sm font-semibold text-gray-700">Book Information</h3>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    ISBN
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.isbn || ''}
+                    onChange={(e) => handleChange('isbn', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="ISBN"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Author
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.author || ''}
+                    onChange={(e) => handleChange('author', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Author"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Book Title
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.book_title || ''}
+                    onChange={(e) => handleChange('book_title', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Book Title"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Video game-specific fields */}
+            {itemType === 'video_game' && (
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="text-sm font-semibold text-gray-700">Video Game Information</h3>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Age Rating
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.video_game_rating || ''}
+                    onChange={(e) => handleChange('video_game_rating', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Age Rating (e.g., PEGI 12)"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="border-t p-4">

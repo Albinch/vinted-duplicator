@@ -88,7 +88,14 @@ async function handleExtractTemplateData() {
       package_size_id: item.package_size_id || 1,
       currency: item.currency || 'EUR',
       is_unisex: item.is_unisex || false,
-      item_attributes: item.item_attributes || []
+      item_attributes: item.item_attributes || [],
+      // Book-specific fields
+      isbn: item.isbn || null,
+      author: item.author || null,
+      book_title: item.book_title || null,
+      // Video game-specific fields
+      video_game_rating: item.video_game_rating?.title || '',
+      video_game_rating_id: item.video_game_rating_id || null
     };
 
     console.log('[Vinted Duplicator] Template data extracted successfully:', templateData);
