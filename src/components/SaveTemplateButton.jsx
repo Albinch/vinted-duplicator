@@ -5,7 +5,7 @@ function SaveTemplateButton({ isOnVinted, vintedContext, onClick }) {
   const getButtonState = () => {
     if (!isOnVinted) {
       return {
-        text: 'Navigate to Vinted',
+        text: 'Go to Vinted',
         disabled: true,
         icon: ArrowRight
       }
